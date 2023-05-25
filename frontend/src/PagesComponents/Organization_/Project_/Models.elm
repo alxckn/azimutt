@@ -50,6 +50,7 @@ import Ports exposing (JsMsg)
 import Services.Toasts as Toasts
 import Set exposing (Set)
 import Shared exposing (Confirm, Prompt)
+import Debouncer.Basic as Debouncer exposing (Debouncer)
 
 
 type alias Model =
@@ -105,7 +106,7 @@ type alias NotesDialog =
 
 
 type alias AmlSidebar =
-    { id : HtmlId, selected : Maybe SourceId, errors : List AmlSchemaError, otherSourcesTableIdsCache : Set TableId }
+    { id : HtmlId, selected : Maybe SourceId, errors : List AmlSchemaError, otherSourcesTableIdsCache : Set TableId, quietForOneSecond : Debouncer Msg Msg }
 
 
 type alias VirtualRelation =
@@ -244,6 +245,7 @@ type AmlSidebarMsg
     | AToggle
     | AChangeSource (Maybe SourceId)
     | AUpdateSource SourceId String
+    | MsgQuietForOneSecond (Debouncer.Msg Msg)
 
 
 type VirtualRelationMsg

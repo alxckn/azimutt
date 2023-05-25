@@ -6,6 +6,7 @@ import Components.Molecules.Editor as Editor
 import Conf
 import DataSources.AmlMiner.AmlAdapter as AmlAdapter
 import DataSources.AmlMiner.AmlParser as AmlParser
+import Debouncer.Basic as Debouncer exposing (Debouncer, fromSeconds, provideInput, settleWhenQuietFor, toDebouncer)
 import Dict
 import Html exposing (Html, button, div, h3, label, option, p, select, text)
 import Html.Attributes exposing (class, disabled, for, id, name, selected, value)
@@ -35,7 +36,7 @@ import PagesComponents.Organization_.Project_.Models.PositionHint exposing (Posi
 import PagesComponents.Organization_.Project_.Models.ShowColumns as ShowColumns
 import PagesComponents.Organization_.Project_.Updates.Utils exposing (setDirtyCmd)
 import Ports
-import Services.Lenses exposing (mapAmlSidebarM, mapErdM, setAmlSidebar, setContent, setErrors, setSelected, setUpdatedAt)
+import Services.Lenses exposing (mapAmlSidebarM, mapAmlSidebarMCmd, mapErdM, setAmlSidebar, setContent, setErrors, setSelected, setUpdatedAt)
 import Set exposing (Set)
 import Time
 import Track
@@ -67,6 +68,10 @@ init id erd =
     , selected = selectedId
     , errors = []
     , otherSourcesTableIdsCache = getOtherSourcesTableIds selectedId erd
+    , quietForOneSecond =
+        Debouncer.manual
+            |> settleWhenQuietFor (Just <| fromSeconds 1)
+            |> toDebouncer
     }
 
 
@@ -96,6 +101,29 @@ update now msg model =
                 |> Maybe.andThen (.sources >> List.find (\s -> s.id == id))
                 |> Maybe.map (\s -> model |> updateSource now s value |> setDirtyCmd)
                 |> Maybe.withDefault ( model |> mapAmlSidebarM (setErrors [ { row = 0, col = 0, problem = "Invalid source" } ]), Cmd.none )
+
+        MsgQuietForOneSecond subMsg ->
+            model
+                |> mapAmlSidebarMCmd
+                    (\amlSideBar ->
+                        let
+                            ( subModel, subCmd, emittedMsg ) =
+                                Debouncer.update subMsg amlSideBar.quietForOneSecond
+
+                            mappedCmd =
+                                Cmd.map MsgQuietForOneSecond subCmd
+
+                            updatedModel =
+                                { amlSideBar | quietForOneSecond = subModel }
+                        in
+                        case emittedMsg of
+                            Just emitted ->
+                                update emitted updatedModel
+                                    |> Tuple.mapSecond (\cmd -> Cmd.batch [ cmd, mappedCmd ])
+
+                            Nothing ->
+                                ( updatedModel, mappedCmd )
+                    )
 
 
 updateSource : Time.Posix -> Source -> String -> Model x -> ( Model x, Cmd Msg )

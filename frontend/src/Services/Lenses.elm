@@ -1,6 +1,7 @@
 module Services.Lenses exposing
     ( mapActive
     , mapAmlSidebarM
+    , mapAmlSidebarMCmd
     , mapAmlSourceCmd
     , mapCanvas
     , mapChecks
@@ -222,6 +223,11 @@ setAmlSidebar =
 mapAmlSidebarM : (v -> v) -> { item | amlSidebar : Maybe v } -> { item | amlSidebar : Maybe v }
 mapAmlSidebarM =
     mapM_ .amlSidebar setAmlSidebar
+
+
+mapAmlSidebarMCmd : (v -> ( v, Cmd msg )) -> { item | amlSidebar : Maybe v } -> ( { item | amlSidebar : Maybe v }, Cmd msg )
+mapAmlSidebarMCmd =
+    mapMCmd_ .amlSidebar setAmlSidebar
 
 
 setAmlSource : v -> { item | amlSource : v } -> { item | amlSource : v }
